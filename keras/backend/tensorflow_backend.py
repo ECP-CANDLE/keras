@@ -44,6 +44,15 @@ _GRAPH_UID_DICTS = {}
 # Change its value via `manual_variable_initialization(value)`.
 _MANUAL_VAR_INIT = False
 
+# This is added to emmulate bfloat16 in mixed precision
+_LP_CAST = 'BFLOAT16'
+def lp_cast(x):
+    if(_LP_CAST=='BFLOAT16' && tf.__version__ >= '1.8.0'):
+        return tf.cast(tf.cast(x, tf.bfloat16), tf.float32)
+    if(_LP_CAST=='FLOAT16' && tf.__version__ >= '1.8.0'):
+        return tf.cast(x, tf.float16), tf.float32)
+    else:
+        return x
 
 def get_uid(prefix=''):
     """Get the uid for the default graph.
@@ -990,6 +999,8 @@ def dot(x, y):
         y_permute_dim = [y_permute_dim.pop(-2)] + y_permute_dim
         xt = tf.reshape(x, [-1, x_shape[-1]])
         yt = tf.reshape(tf.transpose(y, perm=y_permute_dim), [y_shape[-2], -1])
+        xt = lp_cast(xt)
+        yt = lp_cast(yt)
         return tf.reshape(tf.matmul(xt, yt),
                           x_shape[:-1] + y_shape[:-2] + y_shape[-1:])
     if is_sparse(x):
@@ -1050,6 +1061,8 @@ def batch_dot(x, y, axes=None):
         (32, 1, 30)
     ```
     """
+    x = lp_cast(x)
+    y = lp_cast(y)
     if isinstance(axes, int):
         axes = (axes, axes)
     x_ndim = ndim(x)
@@ -3155,6 +3168,8 @@ def conv2d(x, kernel, strides=(1, 1), padding='valid',
     # in case we are in data_format channels_first.
     x = _preprocess_conv2d_input(x, data_format)
     padding = _preprocess_padding(padding)
+    x = lp_cast(x)
+    kernel = lp_cast(kernel)
     x = tf.nn.convolution(
         input=x,
         filter=kernel,
@@ -3197,6 +3212,8 @@ def conv2d_transpose(x, kernel, output_shape, strides=(1, 1),
     padding = _preprocess_padding(padding)
     strides = (1,) + strides + (1,)
 
+    x = lp_cast(x)
+    kernel = lp_cast(kernel)
     x = tf.nn.conv2d_transpose(x, kernel, output_shape, strides,
                                padding=padding)
     x = _postprocess_conv2d_output(x, data_format)
@@ -3232,6 +3249,9 @@ def separable_conv2d(x, depthwise_kernel, pointwise_kernel, strides=(1, 1),
     padding = _preprocess_padding(padding)
     strides = (1,) + strides + (1,)
 
+    x = lp_cast(x)
+    depthwise_kernel = lp_cast(depthwise_kernel)
+    pointwise_kernel = lp_cast(pointwise_kernel)
     x = tf.nn.separable_conv2d(x, depthwise_kernel, pointwise_kernel,
                                strides=strides,
                                padding=padding,
@@ -3267,6 +3287,8 @@ def depthwise_conv2d(x, depthwise_kernel, strides=(1, 1), padding='valid',
     padding = _preprocess_padding(padding)
     strides = (1,) + strides + (1,)
 
+    x = lp_cast(x)
+    depthwise_kernel = lp_cast(depthwise_kernel)
     x = tf.nn.depthwise_conv2d(x, depthwise_kernel,
                                strides=strides,
                                padding=padding,
